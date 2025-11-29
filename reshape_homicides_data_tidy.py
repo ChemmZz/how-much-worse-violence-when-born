@@ -26,7 +26,7 @@ def categorize_columns(df):
         
         # Check if this is a state (no .# suffix and current_state is None)
         elif current_state is None:
-            current_state = col_clean
+            current_state = col_clean.split(".")[0]
             column_info.append({
                 "column": col,
                 "state": current_state,
