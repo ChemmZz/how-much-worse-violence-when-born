@@ -56,7 +56,7 @@ def reshape_to_tidy(df, col_info):
     """
     rows = []
     
-    # Find the year column (first column, usually ' ' or '')
+    # Find the year column
     year_col = df.columns[0]
     
     # Iterate through each year in the dataframe
@@ -82,7 +82,7 @@ def main():
     """
     Main function to run the reshaping process.
     """
-    # Load the CSV with latin-1 encoding (handles Spanish characters)
+    # Load the CSV with latin-1 encoding (Spanish characters)
     df = pd.read_csv("homicides_by_state_municipality.csv", encoding="latin-1")
     
     col_info = categorize_columns(df)
