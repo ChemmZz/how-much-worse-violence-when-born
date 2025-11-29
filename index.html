@@ -221,20 +221,43 @@
                 <!-- Right side: Controls and Info -->
                 <div style="flex: 1;">
                     <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                        <h3 style="margin-top: 0;">Timeline</h3>
+                        <h3 style="margin-top: 0;">Select Period</h3>
                         
-                        <!-- Year Slider -->
-                        <div style="margin-bottom: 30px;">
-                            <label for="year-slider" style="font-weight: 600; font-size: 1.2rem;">
-                                Year: <span id="selected-year">2024</span>
+                        <!-- Year Range Display -->
+                        <div style="margin-bottom: 20px; text-align: center;">
+                            <span style="font-size: 1.4rem; font-weight: 600; color: #333;">
+                                <span id="selected-start-year" style="color: #3273dc;">1990</span>
+                                <span style="color: #999; margin: 0 8px;">→</span>
+                                <span id="selected-end-year" style="color: #e74c3c;">2024</span>
+                            </span>
+                        </div>
+                        
+                        <!-- Start Year Slider -->
+                        <div style="margin-bottom: 20px;">
+                            <label for="start-year-slider" style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 8px;">
+                                Start Year
                             </label>
-                            <input type="range" id="year-slider" min="1990" max="2024" value="2024" 
-                                style="width: 100%; margin-top: 10px; height: 6px;">
+                            <input type="range" id="start-year-slider" min="1990" max="2024" value="1990" 
+                                style="width: 100%; height: 6px; cursor: pointer;">
+                        </div>
+                        
+                        <!-- End Year Slider -->
+                        <div style="margin-bottom: 25px;">
+                            <label for="end-year-slider" style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 8px;">
+                                End Year
+                            </label>
+                            <input type="range" id="end-year-slider" min="1990" max="2024" value="2024" 
+                                style="width: 100%; height: 6px; cursor: pointer;">
+                        </div>
+                        
+                        <!-- Period Summary -->
+                        <div id="period-summary" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 25px; text-align: center;">
+                            <span style="font-size: 0.9rem; color: #666;">Showing <span id="period-years">35</span> years of data</span>
                         </div>
                         
                         <!-- Legend -->
                         <div style="margin-bottom: 30px;">
-                            <h4 style="margin-bottom: 15px;">Homicides</h4>
+                            <h4 style="margin-bottom: 15px;">Cumulative Homicides</h4>
                             <div id="map-legend"></div>
                         </div>
                         
@@ -248,10 +271,28 @@
                 </div>
             </div>
             
-            <!-- Small trend chart below map (optional) -->
-            <div style="margin-top: 40px; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <h4>National Trend (1990-2024)</h4>
-                <svg id="trend-chart" width="100%" height="150"></svg>
+            <!-- Municipalities Zoom Section -->
+            <div id="municipalities-section" style="margin-top: 40px; background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div id="municipalities-placeholder" style="text-align: center; color: #888; padding: 40px 20px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <p style="font-size: 1.1rem; margin: 0;">Click on a state above to see its top 5 most violent municipalities</p>
+                </div>
+                
+                <div id="municipalities-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                        <h4 style="margin: 0; font-size: 1.3rem;">
+                            Top 5 Municipalities in <span id="municipalities-state-name" style="color: #e74c3c;"></span>
+                        </h4>
+                        <span id="municipalities-period" style="font-size: 0.9rem; color: #666;"></span>
+                    </div>
+                    <div id="municipalities-chart-container">
+                        <svg id="municipalities-chart" width="100%" height="280"></svg>
+                    </div>
+                    <p id="municipalities-note" style="font-size: 0.85rem; color: #888; margin-top: 15px; text-align: center;"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -762,16 +803,20 @@
         }
 
         let stateData = [];
+        let municipalityData = [];
 
         // Reference to the D3 selection of state paths on the map
         let mapStates = null;
 
-        // Return cumulative homicides for a normalized state name up to (and including) a given year
-        function getStateCumulative(normalizedState, upToYear) {
+        // Map year range variables
+        let mapStartYear = 1990;
+        let mapEndYear = 2024;
+
+        // Return cumulative homicides for a normalized state name within a year range
+        function getStateCumulative(normalizedState, fromYear, toYear) {
             if (!stateData || stateData.length === 0) return 0;
-            const yearNum = +upToYear;
             return stateData
-                .filter(s => normalizeStateName(s.state) === normalizedState && s.year <= yearNum)
+                .filter(s => normalizeStateName(s.state) === normalizedState && s.year >= fromYear && s.year <= toYear)
                 .reduce((sum, s) => sum + (isNaN(s.homicides) ? 0 : s.homicides), 0);
         }
 
@@ -779,6 +824,7 @@
         if (document.getElementById('state-loading')) document.getElementById('state-loading').style.display = 'inline-block';
         let stateOptions = [];
         d3.csv("homicides_locations_tidy.csv").then(function(data) {
+            // Separate state and municipality data
             stateData = data
                 .filter(d => d.Type == "state")
                 .map(d => ({
@@ -787,9 +833,19 @@
                     homicides: +d.Homicides
                 }));
             
+            municipalityData = data
+                .filter(d => d.Type == "municipality" && d.Municipality !== "No especificado")
+                .map(d => ({
+                    year: +d.Year,
+                    state: d.State,
+                    municipality: d.Municipality,
+                    homicides: +d.Homicides
+                }));
+            
             console.log("State data loaded successfully");
+            console.log("Municipality data loaded:", municipalityData.length, "records");
             console.log("States found:", [...new Set(stateData.map(d => d.state))].sort());
-            console.log("Sample data:", stateData.slice(0, 5));
+            console.log("Sample municipality data:", municipalityData.slice(0, 5));
             // Populate the state dropdown so options match the CSV data
             populateStateDropdown();
             // Hide loading indicator and show search box
@@ -878,203 +934,425 @@
             return nameMap[geoJsonName] || geoJsonName;
         }
 
+        function updatePeriodDisplay() {
+            document.getElementById('selected-start-year').textContent = mapStartYear;
+            document.getElementById('selected-end-year').textContent = mapEndYear;
+            document.getElementById('period-years').textContent = mapEndYear - mapStartYear + 1;
+        }
+
         function initializeMap() {
-                const width = 700;
-                const height = 600;
+            const width = 700;
+            const height = 600;
+            
+            const svg = d3.select("#mexico-map");
+            svg.selectAll("*").remove(); // Clear any existing content
+            
+            const g = svg.append("g");
+            
+            // Create tooltip
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "map-tooltip")
+                .style("position", "absolute")
+                .style("padding", "10px")
+                .style("background", "white")
+                .style("border", "1px solid #ddd")
+                .style("border-radius", "4px")
+                .style("pointer-events", "none")
+                .style("opacity", 0)
+                .style("z-index", 1000);
+            
+            // Load GeoJSON and state data
+            Promise.all([
+                d3.json("https://raw.githubusercontent.com/angelnmara/geojson/master/mexicoHigh.json"),
+                Promise.resolve(stateData)
+            ]).then(([geojson, data]) => {
                 
-                const svg = d3.select("#mexico-map");
-                svg.selectAll("*").remove(); // Clear any existing content
+                // DEBUG: Check what properties are available
+                console.log("First GeoJSON feature properties:", geojson.features[0].properties);
+                console.log("Sample state names from data:", [...new Set(data.map(d => d.state))].slice(0, 5));
+
+                // Create projection
+                const projection = d3.geoMercator()
+                    .fitSize([width, height], geojson);
+
+                const path = d3.geoPath().projection(projection);
+
+                // Helper to compute max cumulative for the selected year range across states
+                function computeMaxCumulative(fromYear, toYear) {
+                    const statesList = [...new Set(data.map(d => normalizeStateName(d.state)))];
+                    const vals = statesList.map(s => getStateCumulative(s, fromYear, toYear) || 0);
+                    return d3.max(vals) || 1;
+                }
+
+                // Color scale based on cumulative totals
+                let maxCum = computeMaxCumulative(mapStartYear, mapEndYear);
+                const colorScale = d3.scaleSequential(d3.interpolateReds)
+                    .domain([0, maxCum]);
+
+                // Draw states (store selection in `mapStates` so other functions can access it)
+                mapStates = g.selectAll("path")
+                    .data(geojson.features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .attr("fill", d => {
+                        const stateKey = normalizeStateName(d.properties.name);
+                        const cum = getStateCumulative(stateKey, mapStartYear, mapEndYear);
+                        return cum ? colorScale(cum) : "#ccc";
+                    })
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 1)
+                    .on("mouseover", function(event, d) {
+                        const stateKey = normalizeStateName(d.properties.name);
+                        const cum = getStateCumulative(stateKey, mapStartYear, mapEndYear);
+
+                        d3.select(this)
+                            .attr("stroke", "#333")
+                            .attr("stroke-width", 2);
+
+                        tooltip.transition().duration(200).style("opacity", 1);
+                        tooltip.html(`
+                            <strong>${stateKey}</strong><br/>
+                            ${cum ? cum.toLocaleString() + " homicides" : "No data"}<br/>
+                            <small style="color: #666;">${mapStartYear} – ${mapEndYear}</small>
+                        `)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this)
+                            .attr("stroke", "#fff")
+                            .attr("stroke-width", 1);
+
+                        tooltip.transition().duration(200).style("opacity", 0);
+                    })
+                    .on("click", function(event, d) {
+                        const stateKey = normalizeStateName(d.properties.name);
+                        showStateInfo(stateKey, mapStartYear, mapEndYear);
+                    });
                 
-                const g = svg.append("g");
-                
-                // Create tooltip
-                const tooltip = d3.select("body").append("div")
-                    .attr("class", "map-tooltip")
-                    .style("position", "absolute")
-                    .style("padding", "10px")
-                    .style("background", "white")
-                    .style("border", "1px solid #ddd")
-                    .style("border-radius", "4px")
-                    .style("pointer-events", "none")
-                    .style("opacity", 0);
-                
-                // Load GeoJSON and state data
-                Promise.all([
-                    d3.json("https://raw.githubusercontent.com/angelnmara/geojson/master/mexicoHigh.json"),
-                    Promise.resolve(stateData)
-                ]).then(([geojson, data]) => {
-                    
-                    // DEBUG: Check what properties are available
-                    console.log("First GeoJSON feature properties:", geojson.features[0].properties);
-                    console.log("Sample state names from data:", [...new Set(data.map(d => d.state))].slice(0, 5));
+                // If user selected a state, highlight it
+                if (userState && mapStates) {
+                    const normalizedUser = normalizeStateName(userState);
+                    const selectedFeature = geojson.features.find(f => 
+                        normalizeStateName(f.properties.name) === normalizedUser
+                    );
 
-                    // Create projection
-                    const projection = d3.geoMercator()
-                        .fitSize([width, height], geojson);
+                    if (selectedFeature) {
+                        // Highlight selected state
+                        mapStates.filter(d => normalizeStateName(d.properties.name) === normalizedUser)
+                            .attr("stroke", "#e74c3c")
+                            .attr("stroke-width", 3);
 
-                    const path = d3.geoPath().projection(projection);
-
-                    // Get current year from slider
-                    let currentYear = +document.getElementById("year-slider").value;
-
-                    // Helper to compute max cumulative for the current year across states
-                    function computeMaxCumulative(year) {
-                        const statesList = [...new Set(data.map(d => normalizeStateName(d.state)))];
-                        const vals = statesList.map(s => getStateCumulative(s, year) || 0);
-                        return d3.max(vals) || 1;
+                        // Show info for selected state
+                        showStateInfo(userState, mapStartYear, mapEndYear);
                     }
+                }
+                
+                // Function to update the map colors
+                function updateMapColors() {
+                    maxCum = computeMaxCumulative(mapStartYear, mapEndYear);
+                    colorScale.domain([0, maxCum || 1]);
 
-                    // Color scale based on cumulative totals up to `currentYear`
-                    let maxCum = computeMaxCumulative(currentYear);
-                    const colorScale = d3.scaleSequential(d3.interpolateReds)
-                        .domain([0, maxCum]);
-
-                    // Draw states (store selection in `mapStates` so other functions can access it)
-                    mapStates = g.selectAll("path")
-                        .data(geojson.features)
-                        .enter()
-                        .append("path")
-                        .attr("d", path)
-                        .attr("fill", d => {
-                            const stateKey = normalizeStateName(d.properties.name);
-                            const cum = getStateCumulative(stateKey, currentYear);
-                            return cum ? colorScale(cum) : "#ccc";
-                        })
-                        .attr("stroke", "#fff")
-                        .attr("stroke-width", 1)
-                        .on("mouseover", function(event, d) {
-                            const stateKey = normalizeStateName(d.properties.name);
-                            const cum = getStateCumulative(stateKey, currentYear);
-
-                            d3.select(this)
-                                .attr("stroke", "#333")
-                                .attr("stroke-width", 2);
-
-                            tooltip.transition().duration(200).style("opacity", 1);
-                            tooltip.html(`
-                                <strong>${stateKey}</strong><br/>
-                                ${cum ? cum.toLocaleString() + " cumulative homicides" : "No data"}
-                            `)
-                            .style("left", (event.pageX + 10) + "px")
-                            .style("top", (event.pageY - 28) + "px");
-                        })
-                        .on("mouseout", function() {
-                            d3.select(this)
-                                .attr("stroke", "#fff")
-                                .attr("stroke-width", 1);
-
-                            tooltip.transition().duration(200).style("opacity", 0);
-                        })
-                        .on("click", function(event, d) {
-                            const stateKey = normalizeStateName(d.properties.name);
-                            showStateInfo(stateKey, currentYear);
-                        });
-                    
-                    // If user selected a state, zoom to it
-                    if (userState && mapStates) {
-                        const normalizedUser = normalizeStateName(userState);
-                        const selectedFeature = geojson.features.find(f => 
-                            normalizeStateName(f.properties.name) === normalizedUser
-                        );
-
-                        if (selectedFeature) {
-                            // Highlight selected state (compare normalized names for robustness)
-                            mapStates.filter(d => normalizeStateName(d.properties.name) === normalizedUser)
-                                .attr("stroke", "#e74c3c")
-                                .attr("stroke-width", 3);
-
-                            // Show info for selected state
-                            showStateInfo(userState, currentYear);
-                        }
-                    }
-                    
-                    // Update map when slider changes: recompute cumulative values & update color scale
-                    document.getElementById("year-slider").addEventListener("input", function() {
-                        currentYear = +this.value;
-                        document.getElementById("selected-year").textContent = currentYear;
-
-                        // recompute max cumulative and update color scale domain
-                        maxCum = computeMaxCumulative(currentYear);
-                        colorScale.domain([0, maxCum || 1]);
-
-                        if (mapStates) {
-                            mapStates.attr("fill", d => {
+                    if (mapStates) {
+                        mapStates
+                            .transition()
+                            .duration(300)
+                            .attr("fill", d => {
                                 const stateKey = normalizeStateName(d.properties.name);
-                                const cum = getStateCumulative(stateKey, currentYear);
+                                const cum = getStateCumulative(stateKey, mapStartYear, mapEndYear);
                                 return cum ? colorScale(cum) : "#ccc";
                             });
-                        }
+                    }
 
-                        // Refresh legend to reflect changed scale
-                        createLegend(colorScale);
-                    });
-                    
-                    // Create legend
+                    // Update legend
                     createLegend(colorScale);
-                });
-            }
-
-            function showStateInfo(stateName, year) {
-                console.log("Looking for:", stateName, year);
-
-                // Normalize for consistency (this is the ONE name we use everywhere)
-                const normalizedState = normalizeStateName(stateName);
-
-                // Reset all outlines (if map has been initialized)
-                if (mapStates) {
-                    mapStates.attr("stroke", "#fff").attr("stroke-width", 1);
-
-                    // Highlight the selected state
-                    mapStates
-                        .filter(d => normalizeStateName(d.properties.name) === normalizedState)
-                        .attr("stroke", "#008000")
-                        .attr("stroke-width", 3);
-                }
-
-                // Compute cumulative homicides up to the selected year
-                const cumulativeTotal = getStateCumulative(normalizedState, +year);
-
-                console.log("Cumulative total for", normalizedState, "through", year, ":", cumulativeTotal);
-
-                if (!isNaN(cumulativeTotal) && cumulativeTotal > 0) {
-                    document.getElementById("state-info").style.display = "block";
-                    document.getElementById("info-state-name").textContent = normalizedState;
-                    document.getElementById("info-homicides").textContent = cumulativeTotal.toLocaleString();
-                    document.getElementById("info-details").textContent = `Cumulative homicides through ${year}`;
-                } else {
-                    console.log("No cumulative data found for ", normalizedState, year);
-                }
-            }
-
-            function createLegend(colorScale) {
-                        // Clear any existing legend content so we don't duplicate labels
-                        const legendContainer = d3.select("#map-legend");
-                        legendContainer.selectAll("*").remove();
-
-                        const legendSvg = legendContainer
-                            .append("svg")
-                            .attr("width", 200)
-                            .attr("height", 100);
-
-                        const legend = legendSvg.append("g");
-                
-                const legendStops = [0, 5000, 10000, 20000, 35000];
-                
-                legendStops.forEach((stop, i) => {
-                    legend.append("rect")
-                        .attr("x", 0)
-                        .attr("y", i * 20)
-                        .attr("width", 20)
-                        .attr("height", 20)
-                        .attr("fill", colorScale(stop));
                     
-                    legend.append("text")
-                        .attr("x", 25)
-                        .attr("y", i * 20 + 14)
-                        .text(stop.toLocaleString())
-                        .style("font-size", "12px");
+                    // Update period display
+                    updatePeriodDisplay();
+                    
+                    // Update state info if one is selected
+                    const stateInfoEl = document.getElementById('state-info');
+                    if (stateInfoEl.style.display !== 'none') {
+                        const currentStateName = document.getElementById('info-state-name').textContent;
+                        if (currentStateName) {
+                            showStateInfo(currentStateName, mapStartYear, mapEndYear);
+                        }
+                    }
+                }
+
+                // Start year slider event
+                document.getElementById("start-year-slider").addEventListener("input", function() {
+                    mapStartYear = +this.value;
+                    
+                    // Ensure start doesn't exceed end
+                    if (mapStartYear > mapEndYear) {
+                        mapStartYear = mapEndYear;
+                        this.value = mapStartYear;
+                    }
+                    
+                    updateMapColors();
                 });
+
+                // End year slider event
+                document.getElementById("end-year-slider").addEventListener("input", function() {
+                    mapEndYear = +this.value;
+                    
+                    // Ensure end doesn't go below start
+                    if (mapEndYear < mapStartYear) {
+                        mapEndYear = mapStartYear;
+                        this.value = mapEndYear;
+                    }
+                    
+                    updateMapColors();
+                });
+                
+                // Create initial legend
+                createLegend(colorScale);
+                
+                // Update initial period display
+                updatePeriodDisplay();
+            });
+        }
+
+        function showStateInfo(stateName, fromYear, toYear) {
+            console.log("Looking for:", stateName, fromYear, "-", toYear);
+
+            // Normalize for consistency (for map display)
+            const normalizedState = normalizeStateName(stateName);
+            
+            // Find the original state name in the CSV data (for municipality lookup)
+            // We need to check what state names exist in municipalityData that match our normalized name
+            const matchingStates = [...new Set(municipalityData.map(d => d.state))].filter(s => 
+                normalizeStateName(s) === normalizedState
+            );
+            const originalStateName = matchingStates.length > 0 ? matchingStates[0] : stateName;
+            
+            console.log("Normalized state:", normalizedState);
+            console.log("Original state name for municipality lookup:", originalStateName);
+
+            // Reset all outlines (if map has been initialized)
+            if (mapStates) {
+                mapStates.attr("stroke", "#fff").attr("stroke-width", 1);
+
+                // Highlight the selected state
+                mapStates
+                    .filter(d => normalizeStateName(d.properties.name) === normalizedState)
+                    .attr("stroke", "#008000")
+                    .attr("stroke-width", 3);
             }
+
+            // Compute cumulative homicides for the selected year range
+            const cumulativeTotal = getStateCumulative(normalizedState, fromYear, toYear);
+
+            console.log("Cumulative total for", normalizedState, "from", fromYear, "to", toYear, ":", cumulativeTotal);
+
+            if (!isNaN(cumulativeTotal) && cumulativeTotal > 0) {
+                document.getElementById("state-info").style.display = "block";
+                document.getElementById("info-state-name").textContent = normalizedState;
+                document.getElementById("info-homicides").textContent = cumulativeTotal.toLocaleString();
+                document.getElementById("info-details").textContent = `Homicides from ${fromYear} to ${toYear}`;
+                
+                // Draw municipalities chart using the original state name from CSV
+                drawMunicipalitiesChart(originalStateName, normalizedState, fromYear, toYear);
+            } else {
+                console.log("No cumulative data found for ", normalizedState, fromYear, "-", toYear);
+            }
+        }
+
+        function createLegend(colorScale) {
+            // Clear any existing legend content
+            const legendContainer = d3.select("#map-legend");
+            legendContainer.selectAll("*").remove();
+
+            const legendSvg = legendContainer
+                .append("svg")
+                .attr("width", 200)
+                .attr("height", 100);
+
+            const legend = legendSvg.append("g");
+            
+            // Dynamic legend stops based on current scale
+            const maxVal = colorScale.domain()[1];
+            const legendStops = [0, maxVal * 0.25, maxVal * 0.5, maxVal * 0.75, maxVal].map(Math.round);
+            
+            legendStops.forEach((stop, i) => {
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("y", i * 20)
+                    .attr("width", 20)
+                    .attr("height", 20)
+                    .attr("fill", colorScale(stop));
+                
+                legend.append("text")
+                    .attr("x", 25)
+                    .attr("y", i * 20 + 14)
+                    .text(stop.toLocaleString())
+                    .style("font-size", "12px");
+            });
+        }
+
+        // Get top 5 municipalities for a state within a year range
+        function getTopMunicipalities(stateName, fromYear, toYear, topN = 5) {
+            if (!municipalityData || municipalityData.length === 0) return [];
+            
+            // Filter by state and year range
+            const filtered = municipalityData.filter(d => 
+                d.state === stateName && 
+                d.year >= fromYear && 
+                d.year <= toYear
+            );
+            
+            // Group by municipality and sum homicides
+            const municipalityTotals = {};
+            filtered.forEach(d => {
+                if (!municipalityTotals[d.municipality]) {
+                    municipalityTotals[d.municipality] = 0;
+                }
+                municipalityTotals[d.municipality] += d.homicides || 0;
+            });
+            
+            // Convert to array and sort
+            const sorted = Object.entries(municipalityTotals)
+                .map(([name, total]) => ({ name, total }))
+                .filter(d => d.total > 0)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, topN);
+            
+            return sorted;
+        }
+
+        // Draw the municipalities bar chart
+        // originalStateName: the name as it appears in the CSV (for data lookup)
+        // displayStateName: the normalized name for display purposes
+        function drawMunicipalitiesChart(originalStateName, displayStateName, fromYear, toYear) {
+            const topMunicipalities = getTopMunicipalities(originalStateName, fromYear, toYear);
+            
+            console.log("Drawing municipalities for:", originalStateName);
+            console.log("Top municipalities found:", topMunicipalities);
+            
+            // Show/hide appropriate elements
+            document.getElementById('municipalities-placeholder').style.display = 'none';
+            document.getElementById('municipalities-content').style.display = 'block';
+            
+            // Update header with display name
+            document.getElementById('municipalities-state-name').textContent = displayStateName;
+            document.getElementById('municipalities-period').textContent = `${fromYear} – ${toYear}`;
+            
+            // Handle case with no data
+            if (topMunicipalities.length === 0) {
+                document.getElementById('municipalities-note').textContent = 'No municipality data available for this state and period.';
+                d3.select("#municipalities-chart").selectAll("*").remove();
+                return;
+            }
+            
+            // Calculate total for percentage using the SAME original state name for consistency
+            // Sum municipality data for this state to get accurate total
+            const stateMunicipalityTotal = municipalityData
+                .filter(d => d.state === originalStateName && d.year >= fromYear && d.year <= toYear)
+                .reduce((sum, d) => sum + (d.homicides || 0), 0);
+            
+            const top5Total = topMunicipalities.reduce((sum, d) => sum + d.total, 0);
+            const percentage = stateMunicipalityTotal > 0 ? ((top5Total / stateMunicipalityTotal) * 100).toFixed(1) : 0;
+            
+            console.log("State municipality total:", stateMunicipalityTotal);
+            console.log("Top 5 total:", top5Total);
+            console.log("Percentage:", percentage);
+            
+            document.getElementById('municipalities-note').textContent = 
+                `These 5 municipalities account for ${percentage}% of all homicides in ${displayStateName} during this period.`;
+            
+            // Draw the chart
+            const container = document.getElementById('municipalities-chart-container');
+            const containerWidth = container.offsetWidth || 700;
+            
+            const margin = { top: 20, right: 30, bottom: 20, left: 180 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = 250 - margin.top - margin.bottom;
+            
+            // Clear previous chart
+            d3.select("#municipalities-chart").selectAll("*").remove();
+            
+            const svg = d3.select("#municipalities-chart")
+                .attr("width", containerWidth)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Scales
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(topMunicipalities, d => d.total)])
+                .range([0, width]);
+            
+            const y = d3.scaleBand()
+                .domain(topMunicipalities.map(d => d.name))
+                .range([0, height])
+                .padding(0.3);
+            
+            // Bars
+            svg.selectAll(".bar")
+                .data(topMunicipalities)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", 0)
+                .attr("y", d => y(d.name))
+                .attr("width", 0)
+                .attr("height", y.bandwidth())
+                .attr("fill", "#e74c3c")
+                .attr("rx", 4)
+                .transition()
+                .duration(800)
+                .delay((d, i) => i * 100)
+                .attr("width", d => x(d.total));
+            
+            // Municipality names (left side)
+            svg.selectAll(".label")
+                .data(topMunicipalities)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", -10)
+                .attr("y", d => y(d.name) + y.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .attr("text-anchor", "end")
+                .style("font-size", "13px")
+                .style("fill", "#333")
+                .text(d => d.name.length > 22 ? d.name.substring(0, 20) + "..." : d.name);
+            
+            // Values (on the bars)
+            svg.selectAll(".value")
+                .data(topMunicipalities)
+                .enter()
+                .append("text")
+                .attr("class", "value")
+                .attr("x", d => x(d.total) + 8)
+                .attr("y", d => y(d.name) + y.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .style("font-size", "12px")
+                .style("font-weight", "600")
+                .style("fill", "#666")
+                .style("opacity", 0)
+                .text(d => d.total.toLocaleString())
+                .transition()
+                .duration(400)
+                .delay((d, i) => 800 + i * 100)
+                .style("opacity", 1);
+            
+            // Rank numbers
+            svg.selectAll(".rank")
+                .data(topMunicipalities)
+                .enter()
+                .append("text")
+                .attr("class", "rank")
+                .attr("x", -margin.left + 10)
+                .attr("y", d => y(d.name) + y.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .style("font-size", "14px")
+                .style("font-weight", "700")
+                .style("fill", "#e74c3c")
+                .text((d, i) => `#${i + 1}`);
+        }
     </script>
 </body>
 </html>

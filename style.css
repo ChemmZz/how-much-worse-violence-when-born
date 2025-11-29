@@ -47,7 +47,7 @@ body {
     border-radius: 4px;
     width: 200px;
 }
-#continue-btn {
+.continue-btn {
     margin-top: 20px;
     padding: 12px 30px;
     font-size: 1.1rem;
@@ -58,8 +58,11 @@ body {
     cursor: pointer;
     display: none;
 }
-#continue-btn:hover {
+.continue-btn:hover {
     background: #2366d1;
+}
+.continue-btn.visible {
+    display: block;
 }
 .scroll-section {
     min-height: 100vh;
