@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html>
+<!-- To improve legilbility of HTML code I added comments and organized the structure with 
+ the help of Copilot-->
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -847,6 +849,12 @@
             console.log("States found:", [...new Set(stateData.map(d => d.state))].sort());
             console.log("Sample municipality data:", municipalityData.slice(0, 5));
             // Populate the state dropdown so options match the CSV data
+
+            // All the above until get the top municipalities was built with the help
+            // of Claude AI, after prompt "My States dropdown is not populating correctly in the map.
+            // I have problems with states like "Estado de México" that appear as "Mexico" in the JSON.
+            // Can you help me fix the code to normalize the state names between both datasets?"
+            
             populateStateDropdown();
             // Hide loading indicator and show search box
             if (document.getElementById('state-loading')) document.getElementById('state-loading').style.display = 'none';
