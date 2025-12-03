@@ -20,7 +20,7 @@
             <label for="year-select">When were you born?</label>
             <select id="year-select" name="year-select">
                 <option value="" selected disabled>Select year</option>
-                <option value="1990">1990</option>
+                <option value="1990">1990 (or before)</option>
                 <option value="1991">1991</option>
                 <option value="1992">1992</option>
                 <option value="1993">1993</option>
@@ -58,6 +58,7 @@
             </select>
             <button id="birth-continue-btn" class="continue-btn">Continue</button>
         </div>
+        <p class="data-availability-note" style="font-size:0.7rem;">* Data available from 1990 to 2024</p>
     </div>
 
     <!-- Section 1: Birth Year -->
@@ -105,7 +106,7 @@
         <div class="content-container">
             <div class="chart-side">
                 <div class="chart-wrapper">
-                    <svg id="chart-full"></svg>
+                    <svg id="chart-cumulative"></svg>
                 </div>
             </div>
             <div class="text-side">
@@ -127,7 +128,7 @@
         <div class="content-container">
             <div class="chart-side">
                 <div class="chart-wrapper">
-                    <svg id="chart-cumulative"></svg>
+                    <svg id="chart-full"></svg>
                 </div>
             </div>
             <div class="text-side">
