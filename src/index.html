@@ -48,6 +48,9 @@
       <button class="nav-menu-item" onclick="navigateTo('section-map')">
         <span>🗺️</span> Map
       </button>
+      <button class="nav-menu-item" onclick="navigateTo('sources-contact')">
+        <span>📰</span> Data and Contact
+      </button>
     </nav>
 
     <div class="intro-section">
@@ -727,7 +730,7 @@
 
       let ageData = [];
 
-      d3.csv("../data/homicides_by_age.csv").then(function (data) {
+      d3.csv("homicides_by_age.csv").then(function (data) {
         ageData = data.map((d) => {
           const keys = Object.keys(d);
           const result = {
@@ -1699,7 +1702,7 @@
       if (document.getElementById("state-loading"))
         document.getElementById("state-loading").style.display = "inline-block";
       let stateOptions = [];
-      d3.csv("../data/homicides_locations_tidy.csv").then(function (data) {
+      d3.csv("homicides_locations_tidy.csv").then(function (data) {
         // Separate state and municipality data
         stateData = data
           .filter((d) => d.Type == "state")
@@ -2347,5 +2350,53 @@
           .text((d, i) => `#${i + 1}`);
       }
     </script>
+    <!-- Footer Ribbon Section -->
+    <footer class="footer-ribbon" id="sources-contact">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h3>Data Source</h3>
+          <p>
+            <a 
+              href="https://www.inegi.org.mx/sistemas/olap/proyectos/bd/continuas/mortalidad/defuncioneshom.asp?s=est#" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              INEGI - Estadísticas de Mortalidad
+            </a>
+          </p>
+          <p class="footer-note">Instituto Nacional de Estadística y Geografía</p>
+        </div>
+        
+        <div class="footer-section">
+          <h3>Project</h3>
+          <p>
+            <a 
+              href="https://github.com/ChemmZz/mexico-violence-in-your-lifetime" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              📁 View Repository
+            </a>
+          </p>
+        </div>
+        
+        <div class="footer-section">
+          <h3>Connect</h3>
+          <p>
+            <a 
+              href="https://github.com/ChemmZz" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              👤 GitHub
+            </a>
+          </p>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>Created to raise awareness about violence in Mexico • Data visualization project</p>
+      </div>
+    </footer>
   </body>
 </html>
