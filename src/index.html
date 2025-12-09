@@ -1539,7 +1539,11 @@
           if (!selectedAgeRange) {
             // Show placeholder until they select
             document.getElementById("age-total").textContent = "—";
-            document.getElementById("age-range-text").textContent = "...";
+            // Fixed made by Claude after prompting my error message
+            const ageRangeTextElement = document.getElementById("age-range-text");
+            if (ageRangeTextElement) {
+              ageRangeTextElement.textContent = "...";
+            }
             d3.select("#chart-age").selectAll("*").remove();
             return;
           }
@@ -1583,9 +1587,13 @@
         }
 
         // Update text elements
+        // Fixed made by Claude after prompting my error message
         document.getElementById("age-total").textContent =
           total.toLocaleString();
-        document.getElementById("age-range-text").textContent = ageRangeDisplay;
+        const ageRangeTextElement = document.getElementById("age-range-text");
+        if (ageRangeTextElement) {
+          ageRangeTextElement.textContent = ageRangeDisplay;
+        }
 
         // How many people each silhouette represents
         const PEOPLE_PER_ICON = 500;

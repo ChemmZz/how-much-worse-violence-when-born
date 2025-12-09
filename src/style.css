@@ -328,7 +328,6 @@ body {
     color: #bdc3c7;
     font-style: italic;
 }
-
 .footer-bottom {
     text-align: center;
     padding-top: 1.5rem;
@@ -336,7 +335,6 @@ body {
     font-size: 0.9rem;
     color: #bdc3c7;
 }
-
 @media (max-width: 768px) {
     .footer-ribbon {
         padding: 2rem 1.5rem 1.5rem;
